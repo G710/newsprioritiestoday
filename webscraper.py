@@ -1,43 +1,34 @@
-from tinydb import TinyDB, Query
-from tinydb_serialization import Serializer, SerializationMiddleware
+import os
+import csv
+
 from datetime import datetime
+from requests_html import HTMLSession
 
-from lib import tagesschau
-from lib import drdk
-from lib import foxnews
-from lib import rt
-from lib import aljazeera
+sources = []
 
-class DateTimeSerializer(Serializer):
-    OBJ_CLASS = datetime
+with open("sources.csv", "r") as file:
+    reader = csv.reader(file, delimiter=",")
+    header = next(reader)
 
-    def encode(self, obj):
-        return obj.strftime('%Y-%m-%dT%H:%M:%S')
+    for row in reader:
+        entry = {}
+        for index, item in enumerate(header):
+            entry[item] = row[index]
+        sources.append(entry)
 
-    def decode(self, s):
-        return datetime.strptime(s, '%Y-%m-%dT%H:%M:%S')
+def fetch_news(source):
+    print(source)
+    print("Fetching news from " + source["name"])
+    session = HTMLSession()
+    r = session.get(source["url"])
 
+    target_directory = "../newsprioritiestoday-data/raw/" + source["directory"]
+    if not os.path.exists(target_directory):
+        print("Path for " + source["name"] + "does not exist. Creating path.")
+        os.makedirs(target_directory)
+    with open(target_directory + "/" + source["directory"] + "_" + str(datetime.now()) + ".txt", "w") as file:
+        print("Saving news from " + source["name"])
+        file.write(r.html.raw_html.decode())
 
-
-# setup database
-# path is relative to the execution path (not the path, this script is in)
-serialization = SerializationMiddleware()
-serialization.register_serializer(DateTimeSerializer(), 'TinyDate')
-
-print('opening database...')
-db = TinyDB('../newsprioritiestoday-data/db.json', storage=serialization)
-
-# TODO: make this dynamic so contributor don't have to touch this file anymore.
-
-print('reading the news...')
-results = []
-results.append(tagesschau.scrape())
-results.append(drdk.scrape())
-results.append(foxnews.scrape())
-results.append(rt.scrape())
-results.append(aljazeera.scrape())
-
-print('saving data...')
-# add results to database
-for result in results:
-    db.insert(result)
+for source in sources:
+    fetch_news(source)
