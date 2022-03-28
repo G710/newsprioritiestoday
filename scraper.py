@@ -28,7 +28,7 @@ def fetch_news(source):
     if not os.path.exists(target_directory):
         print("Path for " + source["name"] + "does not exist. Creating path.")
         os.makedirs(target_directory)
-    with open(target_directory + "/" + source["directory"] + "_" + str(datetime.now()) + ".html", "w") as file:
+    with open(target_directory + "/" + source["directory"] + "_" + str(datetime.now().strftime("%Y-%m-%d %H")) + "h.html", "w") as file:
         file.write(r.html.raw_html.decode())
 
 sources = get_sources()
